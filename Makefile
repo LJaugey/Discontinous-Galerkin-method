@@ -1,4 +1,4 @@
-CXX:=clang++
+CXX:=g++
 CXXFLAGS:= -Ofast -Wall -std=c++20 -fopenmp
 
 SRC = src
