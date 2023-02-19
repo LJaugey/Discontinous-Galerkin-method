@@ -15,8 +15,8 @@ thread_num = 16
 
 
 
-Nx = 50
-Ny = 50
+Nx = 150
+Ny = 150
 
 
 #Prob_name = "RP_1"

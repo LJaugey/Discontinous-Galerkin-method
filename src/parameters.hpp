@@ -51,13 +51,13 @@ constexpr double gamma_ = 7.0/5.0;
 
 // Scheme parameters
 constexpr int order = 3;
-constexpr int Ny = 100;
-constexpr int Nx = 100;
+constexpr int Ny = 150;
+constexpr int Nx = 150;
 constexpr double dx = (bx-ax)/Nx;
 constexpr double dy = (by-ay)/Ny;
 extern double dt_old;
 //double CFL = 2.0/(2*order-1);
-constexpr double CFL = 0.25;
+constexpr double CFL = 0.5;
 constexpr bool viscosity_bool = false;
 constexpr std::string Artificial_Viscosity_Name = "Dialation";    constexpr double c_vis = 1.0; constexpr double c_max = 0.5;
 //std::string Artificial_Viscosity_Name = "Entropy";    double c_vis = 1.0; double c_max = 0.5;
@@ -91,7 +91,7 @@ typedef Array<System_dim,System_dim> point_Jac;
 
 // Saving data
 constexpr bool Save_data = true;
-constexpr int sampling = 10;         // ignored if Save_data==false
+constexpr int sampling = 20;         // ignored if Save_data==false
 constexpr bool Save_data_first = true;
 constexpr bool Save_data_last = true;
 
