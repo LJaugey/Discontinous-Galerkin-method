@@ -14,7 +14,7 @@
 //#include "entropy_variables.hpp"
 #include "Gauss_Lobatto.hpp"
 #include "RHS.hpp"
-//#include "write_data.hpp"
+#include "write_data.hpp"
 
 
 
@@ -100,7 +100,7 @@ void apply_BC_2D(grid_vec_qq& u, string BC)
 }
 
 
-double compute_dt(grid_vec_qq const& u, Array<Ny+2,Nx+2, order,order> const& nu)
+double compute_dt(grid_vec_qq const& u, grid_point_qq const& nu)
 {
     if(Equation_Name=="Custom")
     {
@@ -226,28 +226,22 @@ int main(int argc, char **argv)
 
 
 
-    //if(Save_data || Save_data_last)
-    //{
-    //    clear_data("x"+exp_name);
-    //    clear_data("y"+exp_name);
-    //    clear_data("t"+exp_name);
-    //    clear_data("u"+exp_name);
-    //    clear_data("nu"+exp_name);
-    //
-    //    if(omp_get_max_threads()>1)
-    //    {
-    //        cerr<<"Warning: Artificial viscosity will not be saved (number of threads != 1)"<<endl;
-    //    }
-    //}
+    if(Save_data || Save_data_last)
+    {
+        clear_data("x"+exp_name);
+        clear_data("y"+exp_name);
+        clear_data("t"+exp_name);
+        clear_data("u"+exp_name);
+        clear_data("nu"+exp_name);
+    
+        if(omp_get_max_threads()>1)
+        {
+            cerr<<"Warning: Artificial viscosity will not be saved (number of threads != 1)"<<endl;
+        }
+    }
 
     //init_Equation();
 
-    /*
-    x_ref = lgl_nodes();
-    w_ref = lgl_weights(x_ref);
-
-    D = init_D(x_ref);
-    */
     Array<Nx+1> x_;
     Array<Ny+1> y_;
 
@@ -295,20 +289,13 @@ int main(int argc, char **argv)
     u_0 = Gauss_Lobatto_2D(x_, y_, u0);
     apply_BC_2D(u_0, BC);
 
-    //if(Save_data_first && !(Save_data && sampling==1))
-    //{
-    //    if(fixed_dt)    write_data(u_0, "u"+exp_name, true);
-    //    else            write_data(quadrature_average_2D(u_0, w_ref, true), "u");
-    //
-    //    if(!viscosity_bool) write_data(E(u_0), "E_no_vis"+exp_name);
-    //    else
-    //    {
-    //        if(Artificial_Viscosity_Name == "Dialation")    write_data(E(u_0), "E_dilation"+exp_name);
-    //        if(Artificial_Viscosity_Name == "Entropy")      write_data(E(u_0), "E_entropy"+exp_name);
-    //    }
-    //    
-    //    write_data(t,"t"+exp_name);
-    //}
+    if(Save_data_first && !(Save_data && sampling==1))
+    {
+        if(fixed_dt)    write_data(u_0, "u"+exp_name);
+        else            write_data(quadrature_average_2D(u_0), "u");
+    
+        write_data(t,"t"+exp_name);
+    }
 
     double Save_it = false;
 
@@ -332,7 +319,6 @@ int main(int argc, char **argv)
         }
 
         if(!fixed_dt)   dt = compute_dt(u_0, nu);
-        //cout<<"it: "<<it<<"\tdt: "<<dt<<endl;
 
         // save data if it is a sampling iteration or if it is the last iteration
         Save_it = (((it%sampling == sampling-1) && Save_data)) || (t+dt>=t_fin && Save_data_last);
@@ -340,11 +326,10 @@ int main(int argc, char **argv)
         if(t+dt>=t_fin)
         {
             dt = t_fin-t;
-//            if(Save_data_last)  save_vis(nu, "nu"+exp_name);
+            if(Save_data_last)  write_data(quadrature_average_2D(nu), "nu"+exp_name);
         }
 
         // u1
-        //RHS_2D(u_0,v,res_temp,entropy_var, f1,f2, f1_cell,f2_cell, EC_flux1,EC_flux2, int_flux1,int_flux2 ,D, System_dim, order,dx,dy,dt, w_ref, (Save_it || (it == 0 && Save_data && !Save_data_last)));
         RHS_2D(u_0,v,res_temp, nu, q1,q2, v_hat_im,v_hat_ip,v_hat_mj,v_hat_pj, EC_temp,dvm,dvp,qm_p,q_hat_m,f1_,fs_m,qp_m,q_hat_p,fs_p,f2_);
         u_1 = u_0 + dt*res_temp;
         apply_BC_2D(u_1, BC);
@@ -352,19 +337,15 @@ int main(int argc, char **argv)
 
 
         // u2
-        //RHS_2D(u_1,v,res_temp,entropy_var, f1,f2, f1_cell,f2_cell, EC_flux1,EC_flux2, int_flux1,int_flux2 ,D, System_dim, order,dx,dy,dt, w_ref);
         RHS_2D(u_1,v,res_temp, nu, q1,q2, v_hat_im,v_hat_ip,v_hat_mj,v_hat_pj, EC_temp,dvm,dvp,qm_p,q_hat_m,f1_,fs_m,qp_m,q_hat_p,fs_p,f2_);
         u_2 = 0.25*u_1 + 0.75*u_0 + (0.25*dt)*res_temp;
         apply_BC_2D(u_2, BC);
 
         // u
-        //RHS_2D(u_2,v,res_temp,entropy_var, f1,f2, f1_cell,f2_cell, EC_flux1,EC_flux2, int_flux1,int_flux2 ,D, System_dim, order,dx,dy,dt, w_ref);
         RHS_2D(u_2,v,res_temp, nu, q1,q2, v_hat_im,v_hat_ip,v_hat_mj,v_hat_pj, EC_temp,dvm,dvp,qm_p,q_hat_m,f1_,fs_m,qp_m,q_hat_p,fs_p,f2_);
         u_0 = (1.0/3.0)*u_0 + (2.0/3.0)*u_2 + (2.0*dt/3.0)*res_temp;
         apply_BC_2D(u_0, BC);
 
-        //if(it==3)   return 0;
-        
         t += dt;
 
         if(floor(100*t/t_fin)>percent || t>= t_fin)
@@ -372,20 +353,13 @@ int main(int argc, char **argv)
             cout<<"iteration: "<<it<<"\t\t"<<"dt: "<<dt<<"\t\t"<<percent<<" %"<<endl;
             percent+=1;
         }
-        //if(Save_it)
-        //{
-        //    if(fixed_dt)    write_data(u_0, "u"+exp_name, true);
-        //    else            write_data(quadrature_average_2D(u_0, w_ref, true), "u");
-        //
-        //    if(!viscosity_bool) write_data(E(u_0), "E_no_vis"+exp_name);
-        //    else
-        //    {
-        //        if(Artificial_Viscosity_Name == "Dialation")    write_data(E(u_0), "E_dilation"+exp_name);
-        //        if(Artificial_Viscosity_Name == "Entropy")      write_data(E(u_0), "E_entropy"+exp_name);
-        //    }
-        //    
-        //    write_data(t,"t"+exp_name);
-        //}
+        if(Save_it)
+        {
+            if(fixed_dt)    write_data(u_0, "u"+exp_name);
+            else            write_data(quadrature_average_2D(u_0), "u");
+        
+            write_data(t,"t"+exp_name);
+        }
         
         it++;
     }

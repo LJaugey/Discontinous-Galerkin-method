@@ -1,18 +1,36 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
+import os
+
 
 # matplotlib latex interpreter
-plt.rc('text', usetex=True)
-plt.rc('font', family='serif')
+Latex_interpreter = False
+
+# Run c++ code
+Compute_bool = True
+
+# Number of threads (for the c++ code)
+thread_num = 16
 
 
-if(len(sys.argv)>1):
-    Equation_Name = sys.argv[1]
 
-System_dim = 4
-gamma = 7/5
+Nx = 50
+Ny = 50
+
+
+#Prob_name = "RP_1"
+Prob_name = "RP_2"
+#Prob_name = "RP_3"
+
+#P_order = "P1"
+P_order = "P2"
+#P_order = "P4"
+
+vis_name = "no_vis"
+#vis_name = "dilation"
+#vis_name = "entropy"
+
 
 ax = 0
 bx = 1
@@ -20,74 +38,53 @@ bx = 1
 ay = 0
 by = 1
 
-a = 0
-b = 1
 
-Nx = 200
-Ny = 200
-#Nx = 50
-#Ny = 2
+System_dim = 4
+gamma = 7/5
+
+
+
+#========================================#
+
+
+
+if(Latex_interpreter):
+    
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+
 
 dx = (bx-ax)/Nx
 dy = (by-ay)/Ny
 
-Compute_bool = False
-
-a = 0
-b = 1
-
-Nx = 70
-dx = (b-a)/Nx
-
-Prob_name = "RP_1"
-Prob_name = "RP_2"
-Prob_name = "RP_3"
-
-P_order = "P1"
-P_order = "P2"
-P_order = "P4"
-
-#vis_name = "no_vis"
-#vis_name = "dilation"
-vis_name = "entropy"
 
 exp_name = Prob_name+"_"+P_order+"_"+vis_name
 
 data_file = "output_"+exp_name+"/"
 
 if(Compute_bool):
-    os.system("make -j12")
+    os.system("make -j"+str(thread_num))
     os.system("rm -r "+data_file)
-    os.system("OMP_NUM_THREADS=1 ./run")
+    os.system("OMP_NUM_THREADS="+str(thread_num)+" ./run")
     os.system("mv output/ "+data_file)
     os.system("mkdir output")
 
+
+### t
+data_t = open(data_file+"t.out", 'r').read()
+t = np.array(data_t.split()).astype(float)
+
+Nt = t.shape[0]
+
+print("Nt = ",Nt)
 
 ### u
 
 data_u = open(data_file+"u.out", 'r').read()
 
-Nt = len(data_u.split('\n\n\n'))-1
-
-print("Nt = ",Nt)
-
 u_flatten = data_u.split()
 
-
-data_x = open(data_file+"x.out", 'r').read()
-x_flatten = np.array(data_x.split()).astype(float)
-x = np.reshape(x_flatten, (Nx,-1))
-
-order = x.shape[1]
-
-
-data_t = open(data_file+"t.out", 'r').read()
-t = np.array(data_t.split()).astype(float)
-
-
-
 u = np.empty((Nt,Ny,Nx,System_dim))
-
 
 for it in range(Nt):
     for i in range(Ny):
@@ -98,6 +95,20 @@ for it in range(Nt):
 
 
 u = np.where(np.isnan(u), np.nanmin(u), u)
+
+
+
+data_x = open(data_file+"x.out", 'r').read()
+x_flatten = np.array(data_x.split()).astype(float)
+x = np.reshape(x_flatten, (Nx,-1))
+
+order = x.shape[1]
+
+data_y = open(data_file+"y.out", 'r').read()
+y_flatten = np.array(data_y.split()).astype(float)
+y = np.reshape(y_flatten, (Ny,-1))
+
+
 
 x_ = np.linspace(ax+0.5*dx, bx-0.5*dx, Nx)
 y_ = np.linspace(ay+0.5*dy, by-0.5*dy, Ny)
@@ -112,7 +123,8 @@ Energy = u[:,:,:,3]
 
 Pressure = (gamma-1)*(Energy-0.5*((momentum1**2 + momentum2**2)/rho))
 
-fig1, ax1 = plt.subplots(figsize=[3.4,3.4])
+fig1, ax1 = plt.subplots()
+#fig1, ax1 = plt.subplots(figsize=[3.4,3.4])
 #fig2, ax2 = plt.subplots(figsize=[4.5, 3.4])
 #fig3, ax3 = plt.subplots(figsize=[4.5, 3.4])
 #fig4, ax4 = plt.subplots(figsize=[4.5, 3.4])
@@ -121,7 +133,7 @@ fig1, ax1 = plt.subplots(figsize=[3.4,3.4])
 plt.figure(fig1.number)
 Cplot1 = ax1.contour(X,Y,rho[0], 100, algorithm='threaded', linewidths=0.5)
 ax1.set_aspect('equal')
-plt.tight_layout(rect=(0.0,0.0,1.0,0.975))
+#plt.tight_layout(rect=(0.0,0.0,1.0,0.975))
 #cbar1 = fig1.colorbar(Cplot1)
 #plt.xlabel("$x$")
 #plt.ylabel("$y$")
@@ -145,8 +157,10 @@ for it in range(Nt):
     #plt.ylabel("$y$")
     plt.title("Density at $t = $"+str(t[it]))
 
-    plt.pause(0.001)
-
+    if(Nt>20):
+        plt.pause(0.001)
+    else:
+        plt.pause(0.2)
 
     # v1, v2, E
     """
@@ -194,7 +208,9 @@ for it in range(Nt):
         plt.gca().collections.remove(coll)
     cbar4.remove()
 """
-fig1.savefig(exp_name+"rho"+".pdf", format="pdf")
+
+
+fig1.savefig(exp_name+"_rho"+".pdf", format="pdf")
 
 
 ### nu
@@ -218,7 +234,7 @@ plt.xlabel("$x$")
 plt.ylabel("$y$")
 plt.title("viscosity $\\nu$")
 
-fig.savefig(exp_name+"nu"+".pdf", format="pdf")
+fig.savefig(exp_name+"_nu"+".pdf", format="pdf")
 
 
 plt.show()

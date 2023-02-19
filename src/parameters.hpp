@@ -51,8 +51,8 @@ constexpr double gamma_ = 7.0/5.0;
 
 // Scheme parameters
 constexpr int order = 3;
-constexpr int Ny = 30;
-constexpr int Nx = 30;
+constexpr int Ny = 100;
+constexpr int Nx = 100;
 constexpr double dx = (bx-ax)/Nx;
 constexpr double dy = (by-ay)/Ny;
 extern double dt_old;
@@ -90,8 +90,8 @@ typedef Array<System_dim,System_dim> point_Jac;
 
 
 // Saving data
-constexpr bool Save_data = false;
-constexpr int sampling = 50;         // ignored if Save_data==false
+constexpr bool Save_data = true;
+constexpr int sampling = 10;         // ignored if Save_data==false
 constexpr bool Save_data_first = true;
 constexpr bool Save_data_last = true;
 

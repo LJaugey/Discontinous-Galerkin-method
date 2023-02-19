@@ -9,3 +9,6 @@ The method is detailed in the report (ES_DG_Report.pdf)
 Parameters can be changed in the src/parameters.hpp file.
 
 Type `make` to compile and then run with `./run` .
+
+To visualize the results, run `python plotter.py`.
+Some parameters (at the beginning of the script) should be tuned.

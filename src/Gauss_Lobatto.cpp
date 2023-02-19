@@ -6,7 +6,7 @@
 #include <limits>
 #include <iostream>
 
-//#include "write_data.hpp"
+#include "write_data.hpp"
 #include "utility.hpp"
 
 
@@ -59,15 +59,15 @@ grid_vec_qq Gauss_Lobatto_2D(Array<Nx+1> x, Array<Ny+1> y, Array<System_dim> (*f
                     }
                 }
             }
-            //if((Save_data || Save_data_last) && i == 0)
-            //{
-            //    write_data(x_, "x"+exp_name);
-            //}
+            if((Save_data || Save_data_last) && i == 0)
+            {
+                write_data(x_, "x"+exp_name);
+            }
         }
-        //if(Save_data || Save_data_last)
-        //{
-        //    write_data(y_, "y"+exp_name);
-        //}
+        if(Save_data || Save_data_last)
+        {
+            write_data(y_, "y"+exp_name);
+        }
     }
     
     return u;
