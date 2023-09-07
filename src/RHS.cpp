@@ -2,7 +2,9 @@
 #include "utility.hpp"
 
 #include <iostream>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 using namespace std;
 

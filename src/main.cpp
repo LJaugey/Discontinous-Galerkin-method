@@ -3,7 +3,10 @@
 #include <string>
 #include <cstring>
 #include <chrono>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 //#include "parameters.hpp"
 //#include "Artificial_viscosity.hpp"
@@ -145,7 +148,7 @@ double compute_dt(grid_vec_qq const& u, grid_point_qq const& nu)
     }
     else
     {
-        Array<Ny,Nx, System_dim> u_bar = quadrature_average_2D(u);
+        ND::Array<Ny,Nx, System_dim> u_bar = quadrature_average_2D(u);
 
         double max_val = u_bar(0,0,0);
 
@@ -233,17 +236,19 @@ int main(int argc, char **argv)
         clear_data("t"+exp_name);
         clear_data("u"+exp_name);
         clear_data("nu"+exp_name);
-    
+
+        #ifdef _OPENMP
         if(omp_get_max_threads()>1)
         {
             cerr<<"Warning: Artificial viscosity will not be saved (number of threads != 1)"<<endl;
         }
+        #endif
     }
 
     //init_Equation();
 
-    Array<Nx+1> x_;
-    Array<Ny+1> y_;
+    ND::Array<Nx+1> x_;
+    ND::Array<Ny+1> y_;
 
     for(int j = 0; j<Nx+1; j++)   x_(j) = ax + j*dx;
     for(int i = 0; i<Ny+1; i++)   y_(i) = ay + i*dy;

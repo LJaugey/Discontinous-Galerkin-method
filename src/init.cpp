@@ -3,9 +3,9 @@
 
 using namespace std;
 
-Array<order,order> init_D(Array<order> x_ref)
+ND::Array<order,order> init_D(ND::Array<order> x_ref)
 {
-    Array<order,order> D_;
+    ND::Array<order,order> D_;
 
     for(int i=0; i<order; i++)
     {

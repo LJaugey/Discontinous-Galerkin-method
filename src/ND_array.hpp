@@ -3,69 +3,89 @@
 
 #include <cstddef>
 #include <iostream>
-#include <vector>
+#include <type_traits>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
+
+#include "Array_Expression.hpp"
+#include "Unary_Expression.hpp"
+#include "Binary_Expression.hpp"
 
 
-#define PAR_SIZE 1024
 
-
+namespace ND {
 
 template <size_t firstDim, size_t... RestDims>
-class Array
+class Array : public Array_Expression<ND::Array<firstDim, RestDims...>>
 {
+    template<size_t dim1, size_t... dimN>
+    friend class Array;
 public:
 
     static constexpr size_t N = sizeof...(RestDims) + 1;
-    static constexpr size_t length = firstDim*(RestDims * ...);
-    static constexpr size_t Dims[] = {firstDim, RestDims...};
-    
-    double* data_;
+    static constexpr size_t length = firstDim * (RestDims * ...);
+    static constexpr size_t Dims[N] = {firstDim, RestDims...};
 
+    typedef typename base_traits<Array>::terminal_type terminal_type;
+    typedef typename base_traits<Array>::terminal_sub_type terminal_sub_type;
+
+protected:
+
+    double* data_;
     bool is_original;
 
+
+public:
+
+    inline const double get_element(size_t i) const     {   return data_[i];    }
 
     // Base constructor
     Array()
     {
         data_ = new double[length];
-        
-        std::fill_n(data_,length, 0.0);
+
+        is_original =  true;
+    }
+    Array(double val)
+    {
+        data_ = new double[length];
+
+        std::fill_n(data_,length, val);
 
         is_original =  true;
     }
 
     // copy constructor
-    Array(const Array<firstDim, RestDims...>& other)
+    Array(const ND::Array<firstDim, RestDims...>& other)
+    : is_original(true)
     {
-        data_ = other.data_;
-        is_original =  false;
+        data_ = new double[length];
+
+        std::copy(other.data_, other.data_ + length, data_);
     }
-    
+
     // Constructor from pointer
     Array(double* p, bool is_or = false)
     {
         data_ = p;
         is_original = is_or;
     }
-
-
-
-    const Array<firstDim, RestDims...>& operator=(const Array<firstDim, RestDims...>& other)
+    
+    // copy assigment operator
+    const ND::Array<firstDim, RestDims...>& operator=(const ND::Array<firstDim, RestDims...>& other)
     {
-        //data_ = other.data_;
         std::copy(other.data_, other.data_ + length, data_);
-
         return *this;
     }
-    constexpr const Array<firstDim, RestDims...>& operator=(double val)
+    const ND::Array<firstDim, RestDims...>& operator=(double val)
     {
         std::fill_n(data_,length, val);
         return *this;
     }
-    
     // constructor from N-1 dimensional array
-    constexpr Array(Array<RestDims...> const& slice)
+    Array(const ND::Array<RestDims...>& slice)
     {
         data_ = new double[length];
         for(size_t i = 0; i<firstDim; i++)
@@ -74,29 +94,75 @@ public:
         }
     }
 
+    // construct from Array_expressions
+    // Shift can be used if N<expr.N (e.g. operator[] on expressions)
+    template <typename E>
+    Array(const Array_Expression<E>& expr, size_t shift = 0)
+    : is_original(true)
+    {
+        data_ = new double[length];
+        if constexpr(length>PAR_SIZE)
+        {
+            #pragma omp parallel for if(omp_get_num_threads() == 1)
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(shift + i);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(shift + i);
+            }
+        }
+    }
+    template <typename E>
+    const Array& operator=(const Array_Expression<E>& expr)
+    {
+        if constexpr(length>PAR_SIZE)
+        {
+            #pragma omp parallel for if(omp_get_num_threads() == 1)
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(i);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(i);
+            }
+        }
+
+        return *this;
+    }
+
+    // destructor
     ~Array() {  if(is_original)    delete[] data_;   }
 
 
 
     // access element
-    template <typename... Indices>
-    constexpr double& operator()(Indices... indices)
+    template <typename... ind_type>
+    inline double& operator()(ind_type... indices)
     {
         size_t offset = 0;
-        size_t temp[] = {static_cast<size_t>(indices)...};
+        size_t temp[N] = {static_cast<size_t>(indices)...};
 
-        for (size_t i = 0; i < N; i++) {
+        for (size_t i = 0; i < std::min(N, sizeof...(ind_type)); i++) {
             offset = offset * Dims[i] + temp[i];
         }
         return data_[offset];
     }
-    template <typename... Indices>
-    constexpr double operator()(Indices... indices) const
+    template <typename... ind_type>
+    inline const double operator()(ind_type... indices) const
     {
         size_t offset = 0;
-        size_t temp[] = {static_cast<size_t>(indices)...};
+        size_t temp[N] = {static_cast<size_t>(indices)...};
 
-        for (size_t i = 0; i < N; i++) {
+        for (size_t i = 0; i < std::min(N, sizeof...(ind_type)); i++) {
             offset = offset * Dims[i] + temp[i];
         }
         return data_[offset];
@@ -104,137 +170,71 @@ public:
 
 
     // access element
-    constexpr Array<RestDims...> operator[](size_t index)
+    inline ND::Array<RestDims...> operator[](size_t index)
     {
-        return Array<RestDims...>(data_+ index * (RestDims * ...));
+        return ND::Array<RestDims...>(data_ + index * (RestDims * ...), false);  // Guaranteed copy elision
     }
-    constexpr const Array<RestDims...> operator[](size_t index) const
+    inline const ND::Array<RestDims...> operator[](size_t index) const
     {
-        return Array<RestDims...>(data_+ index * (RestDims * ...));
+        return ND::Array<RestDims...>(data_ + index * (RestDims * ...), false);  // Guaranteed copy elision
     }
 
 
-
-
-
-    constexpr const Array<firstDim, RestDims...>& fill(double val)
+    const ND::Array<firstDim, RestDims...>& fill(double val)
     {
         std::fill_n(data_,length, val);
         return *this;
     }
-    constexpr const Array<firstDim, RestDims...>& fill(const Array<firstDim, RestDims...>& other)
+    const ND::Array<firstDim, RestDims...>& fill(const ND::Array<firstDim, RestDims...>& other)
     {
         if(data_ != other.data_)    std::copy(other.data_, other.data_ + length, data_);
         return *this;
     }
-
-
-    // explicit copy
-    constexpr Array<firstDim, RestDims...> copy() const
+    template<class E>
+    const ND::Array<firstDim, RestDims...>& fill(const Array_Expression<E>& expr)
     {
-        Array<firstDim, RestDims...> result;
-
-        std::copy(data_, data_+length, result.data_);
-
-        return result;
-    }
-
-
-
-    constexpr size_t size(const size_t index = 0) const
-    {
-        return Dims[index];
-    }
-
-    
-    // abs
-    Array<firstDim, RestDims...> const& abs()
-    {
-        if constexpr(length>PAR_SIZE)
+        for (size_t i = 0; i < length; ++i)
         {
-            #pragma omp parallel for if(omp_get_num_threads() == 1)
-            for (size_t i = 0; i < length; i++) {
-                data_[i] = std::abs(data_[i]);
-            }
+            data_[i] = expr.get_element(i);
         }
-        else
-        {
-            for (size_t i = 0; i < length; i++) {
-                data_[i] = std::abs(data_[i]);
-            }
-        }
+
         return *this;
     }
 
 
-    // min
-    double min() const
+    inline const size_t size(const size_t index = 0) const
     {
-        double res = data_[0];
-        
-        if constexpr(length>PAR_SIZE)
-        {
-            #pragma omp parallel for reduction(min:res) if(omp_get_num_threads() == 1)
-            for (size_t i = 1; i < length; i++) {
-                res = std::min(res,data_[i]);
-            }
-        }
-        else
-        {
-            for (size_t i = 1; i < length; i++) {
-                res = std::min(res,data_[i]);
-            }
-        }
-        return res;
+        return Dims[index];
     }
-    // max
-    double max() const
-    {
-        double res = data_[0];
-        
-        if constexpr(length>PAR_SIZE)
-        {
-            #pragma omp parallel for reduction(min:res) if(omp_get_num_threads() == 1)
-            for (size_t i = 1; i < length; i++) {
-                res = std::max(res,data_[i]);
-            }
-        }
-        else
-        {
-            for (size_t i = 1; i < length; i++) {
-                res = std::max(res,data_[i]);
-            }
-        }
-        return res;
-    }
-
+    
 
 
 
 
     // Arithmetic operations
 
-
     // += operator
-    const Array<firstDim, RestDims...>& operator+=(const Array<firstDim, RestDims...>& other)
+    template<class E>
+    requires std::is_same_v<typename E::terminal_type, terminal_type>
+    const ND::Array<firstDim, RestDims...>& operator+=(const Array_Expression<E>& expr)
     {
         if constexpr(length>PAR_SIZE)
         {
             #pragma omp parallel for if(omp_get_num_threads() == 1)
             for (size_t i = 0; i < length; i++) {
-                data_[i] += other.data_[i];
+                data_[i] += expr.get_element(i);
             }
         }
         else
         {
             for (size_t i = 0; i < length; i++) {
-                data_[i] += other.data_[i];
+                data_[i] += expr.get_element(i);
             }
         }
         return *this;
     }
     // scalar
-    const Array<firstDim, RestDims...>& operator+=(double scalar)
+    const ND::Array<firstDim, RestDims...>& operator+=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -253,25 +253,27 @@ public:
     }
 
     // -= operator
-    const Array<firstDim, RestDims...>& operator-=(const Array<firstDim, RestDims...>& other)
+    template<class E>
+    requires std::is_same_v<typename E::terminal_type, terminal_type>
+    const ND::Array<firstDim, RestDims...>& operator-=(const Array_Expression<E>& expr)
     {
         if constexpr(length>PAR_SIZE)
         {
             #pragma omp parallel for if(omp_get_num_threads() == 1)
             for (size_t i = 0; i < length; i++) {
-                data_[i] -= other.data_[i];
+                data_[i] -= expr.get_element(i);
             }
         }
         else
         {
             for (size_t i = 0; i < length; i++) {
-                data_[i] -= other.data_[i];
+                data_[i] -= expr.get_element(i);
             }
         }
         return *this;
     }
     // scalar
-    const Array<firstDim, RestDims...>& operator-=(double scalar)
+    const ND::Array<firstDim, RestDims...>& operator-=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -290,25 +292,27 @@ public:
     }
 
     // *= operator
-    const Array<firstDim, RestDims...>& operator*=(const Array<firstDim, RestDims...>& other)
+    template<class E>
+    requires std::is_same_v<typename E::terminal_type, terminal_type>
+    const ND::Array<firstDim, RestDims...>& operator*=(const Array_Expression<E>& expr)
     {
         if constexpr(length>PAR_SIZE)
         {
             #pragma omp parallel for if(omp_get_num_threads() == 1)
             for (size_t i = 0; i < length; i++) {
-                data_[i] *= other.data_[i];
+                data_[i] *= expr.get_element(i);
             }
         }
         else
         {
             for (size_t i = 0; i < length; i++) {
-                data_[i] *= other.data_[i];
+                data_[i] *= expr.get_element(i);
             }
         }
         return *this;
     }
     // scalar
-    const Array<firstDim, RestDims...>& operator*=(double scalar)
+    const ND::Array<firstDim, RestDims...>& operator*=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -327,25 +331,27 @@ public:
     }
 
     // /= operator
-    const Array<firstDim, RestDims...>& operator/=(const Array<firstDim, RestDims...>& other)
+    template<class E>
+    requires std::is_same_v<typename E::terminal_type, terminal_type>
+    const ND::Array<firstDim, RestDims...>& operator/=(const Array_Expression<E>& expr)
     {
         if constexpr(length>PAR_SIZE)
         {
             #pragma omp parallel for if(omp_get_num_threads() == 1)
             for (size_t i = 0; i < length; i++) {
-                data_[i] /= other.data_[i];
+                data_[i] /= expr.get_element(i);
             }
         }
         else
         {
             for (size_t i = 0; i < length; i++) {
-                data_[i] /= other.data_[i];
+                data_[i] /= expr.get_element(i);
             }
         }
         return *this;
     }
     // scalar
-    const Array<firstDim, RestDims...>& operator/=(double scalar)
+    const ND::Array<firstDim, RestDims...>& operator/=(double scalar)
     {
         double inv_scal = 1.0/scalar;
 
@@ -365,15 +371,21 @@ public:
         return *this;
     }
 };
+template<size_t firstDim, size_t... RestDims>
+struct base_traits<ND::Array<firstDim, RestDims...>>
+{
+    typedef ND::Array<firstDim, RestDims...> terminal_type;
+    typedef ND::Array<RestDims...> terminal_sub_type;
+};
 
 
 
 
 // ostream
 template <size_t firstDim, size_t... RestDims>
-std::ostream& operator<<(std::ostream& output, const Array<firstDim, RestDims...>& other)
+std::ostream& operator<<(std::ostream& output, const ND::Array<firstDim, RestDims...>& other)
 {
-    if constexpr (sizeof...(RestDims) > 0)
+    if (sizeof...(RestDims) > 0)
     {
         for(size_t i = 0; i<firstDim; i++)
             output<<other[i]<<std::endl;
@@ -389,177 +401,53 @@ std::ostream& operator<<(std::ostream& output, const Array<firstDim, RestDims...
 
 
 
-
-
-// abs
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> abs(Array<firstDim, RestDims...> M)
-{
-    Array<firstDim, RestDims...> result = M.copy();
-
-    return result.abs();
-}
-
-
-// min
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> min(Array<firstDim, RestDims...> M)
-{
-    return M.min();
-}
-// max
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> max(Array<firstDim, RestDims...> M)
-{
-    return M.max();
-}
-
-
-
-// addition
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator+(const Array<firstDim, RestDims...>& M1, const Array<firstDim, RestDims...>& M2)
-{
-    Array<firstDim, RestDims...> result = M1.copy();
-    result+=M2;
-    return result;
-}
-// scalar
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator+(double scalar, const Array<firstDim, RestDims...>& other)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result+=scalar;
-    return result;
-}
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator+(const Array<firstDim, RestDims...>& other, double scalar)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result+=scalar;
-    return result;
-}
-
-
-// substraction
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator-(const Array<firstDim, RestDims...>& M1, const Array<firstDim, RestDims...>& M2)
-{
-    Array<firstDim, RestDims...> result = M1.copy();
-    result-=M2;
-    return result;
-}
-// scalar
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator-(double scalar, const Array<firstDim, RestDims...>& other)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result-=scalar;
-    return result;
-}
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator-(const Array<firstDim, RestDims...>& other, double scalar)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result-=scalar;
-    return result;
-}
-
-
-// multiplication
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator*(const Array<firstDim, RestDims...>& M1, const Array<firstDim, RestDims...>& M2)
-{
-    Array<firstDim, RestDims...> result = M1.copy();
-    result*=M2;
-    return result;
-}
-// scalar
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator*(double scalar, const Array<firstDim, RestDims...>& other)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result*=scalar;
-    return result;
-}
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator*(const Array<firstDim, RestDims...>& other, double scalar)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result*=scalar;
-    return result;
-}
-
-
-// division
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator/(const Array<firstDim, RestDims...>& M1, const Array<firstDim, RestDims...>& M2)
-{
-    Array<firstDim, RestDims...> result = M1.copy();
-    result/=M2;
-    return result;
-}
-// scalar
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator/(double scalar, const Array<firstDim, RestDims...>& other)
-{
-    Array<firstDim, RestDims...> result;
-
-    result = scalar;
-
-    result/=other;
-
-    return result;
-}
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator/(const Array<firstDim, RestDims...>& other, double scalar)
-{
-    Array<firstDim, RestDims...> result = other.copy();
-    result/=scalar;
-    return result;
-}
-
-// opposite
-template <size_t firstDim, size_t... RestDims>
-constexpr Array<firstDim, RestDims...> operator-(const Array<firstDim, RestDims...>& other)
-{
-    Array<firstDim, RestDims...> result;
-
-    result-=other;
-
-    return result;
-}
-
-
-
-
 template <size_t Dim>
-class Array<Dim>
+class Array<Dim> : public Array_Expression<ND::Array<Dim>>
 {
+    template<size_t dim1, size_t... dimN>
+    friend class Array;
 public:
 
     static constexpr size_t N = 1;
     static constexpr size_t length = Dim;
+    static constexpr size_t Dims[N] = {Dim};
+
+    typedef typename base_traits<Array>::terminal_type terminal_type;
+    typedef typename base_traits<Array>::terminal_sub_type terminal_sub_type;
+
+protected:
 
     double* data_;
-
     bool is_original;
 
     
+public:
+
+    inline const double get_element(size_t i) const     {   return data_[i];    }
+
     // Base constructor
     Array()
     {
         data_ = new double[length];
-        std::fill_n(data_,length, 0.0);
+
+        is_original =  true;
+    }
+    Array(double val)
+    {
+        data_ = new double[length];
+
+        std::fill_n(data_,length, val);
 
         is_original =  true;
     }
 
     // copy constructor
-    Array(const Array<Dim> & other)
+    Array(const ND::Array<Dim>& other)
+    : is_original(true)
     {
-        data_ = other.data_;
-        is_original =  false;
+        data_ = new double[length];
+
+        std::copy(other.data_, other.data_ + length, data_);
     }
     
     // Constructor from pointer
@@ -569,119 +457,105 @@ public:
         is_original = is_or;
     }
     
-
-
-    const Array<Dim>& operator=(const Array<Dim>& other)
+    // copy assigment operator
+    const ND::Array<Dim>& operator=(const ND::Array<Dim>& other)
     {
-        //data_ = other.data_;
         std::copy(other.data_, other.data_ + length, data_);
-
         return *this;
     }
-    constexpr const Array<Dim>& operator=(double val)
+    const ND::Array<Dim>& operator=(double val)
     {
         std::fill_n(data_,length, val);
         return *this;
     }
     
-    ~Array() {  if(is_original)    delete[] data_;   }
-
-
-    // access element
-    constexpr double& operator()(size_t index)              { return data_[index]; }
-    constexpr double operator()(size_t index) const   { return data_[index]; }
-    constexpr double& operator[](size_t index)              { return data_[index]; }
-    constexpr double operator[](size_t index) const   { return data_[index]; }
-
-
-
-
-
-    constexpr const Array<Dim>& fill(double val)
+    // construct from Array_expressions
+    // Shift can be used if N<expr.N (e.g. operator[] on expressions)
+    template <typename E>
+    Array(const Array_Expression<E>& expr, size_t shift = 0)
+    : is_original(true)
     {
-        std::fill_n(data_,length, val);
-        return *this;
+        data_ = new double[length];
+        if constexpr(length>PAR_SIZE)
+        {
+            #pragma omp parallel for if(omp_get_num_threads() == 1)
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(shift + i);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(shift + i);
+            }
+        }
     }
-    constexpr const Array<Dim>& fill(const Array<Dim> & other)
-    {
-        if(data_ != other.data_)    std::copy(other.data_, other.data_ + length, data_);
-        return *this;
-    }
-
-
-    // explicit copy
-    constexpr Array<Dim> copy() const
-    {
-        Array<Dim> result;
-
-        std::copy(data_, data_+length, result.data_);
-
-        return result;
-    }
-
-
-
-
-    // abs
-    Array<Dim> const& abs()
+    template <typename E>
+    const Array& operator=(const Array_Expression<E>& expr)
     {
         if constexpr(length>PAR_SIZE)
         {
             #pragma omp parallel for if(omp_get_num_threads() == 1)
-            for (size_t i = 0; i < length; i++) {
-                data_[i] = std::abs(data_[i]);
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(i);
             }
         }
         else
         {
-            for (size_t i = 0; i < length; i++) {
-                data_[i] = std::abs(data_[i]);
+            for (size_t i = 0; i < length; ++i)
+            {
+                data_[i] = expr.get_element(i);
             }
         }
+
+        return *this;
+    }
+
+    // destructor
+    ~Array() {  if(is_original)    delete[] data_;   }
+
+
+
+    // access element
+    inline double& operator()(size_t index)                { return data_[index]; }
+    inline const double operator()(size_t index) const     { return data_[index]; }
+    inline double& operator[](size_t index)                { return data_[index]; }
+    inline const double operator[](size_t index) const     { return data_[index]; }
+
+
+
+
+
+    const ND::Array<Dim>& fill(double val)
+    {
+        std::fill_n(data_,length, val);
+        return *this;
+    }
+    const ND::Array<Dim>& fill(const ND::Array<Dim>& other)
+    {
+        if(data_ != other.data_)    std::copy(other.data_, other.data_ + length, data_);
+        return *this;
+    }
+    template<class E>
+    const ND::Array<Dim>& fill(const Array_Expression<E>& expr)
+    {
+        for (size_t i = 0; i < length; ++i)
+        {
+            data_[i] = expr.get_element(i);
+        }
+
         return *this;
     }
 
 
-    // min
-    double min() const
+    inline const size_t size(const size_t index = 0) const
     {
-        double res = data_[0];
-        
-        if constexpr(length>PAR_SIZE)
-        {
-            #pragma omp parallel for reduction(min:res) if(omp_get_num_threads() == 1)
-            for (size_t i = 1; i < length; i++) {
-                res = std::min(res,data_[i]);
-            }
-        }
-        else
-        {
-            for (size_t i = 1; i < length; i++) {
-                res = std::min(res,data_[i]);
-            }
-        }
-        return res;
+        return Dims[index];
     }
-    // max
-    double max() const
-    {
-        double res = data_[0];
-        
-        if constexpr(length>PAR_SIZE)
-        {
-            #pragma omp parallel for reduction(min:res) if(omp_get_num_threads() == 1)
-            for (size_t i = 1; i < length; i++) {
-                res = std::max(res,data_[i]);
-            }
-        }
-        else
-        {
-            for (size_t i = 1; i < length; i++) {
-                res = std::max(res,data_[i]);
-            }
-        }
-        return res;
-    }
+
 
 
 
@@ -691,7 +565,7 @@ public:
 
 
     // += operator
-    const Array<Dim>& operator+=(const Array<Dim>& other)
+    const ND::Array<Dim>& operator+=(const ND::Array<Dim>& other)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -709,7 +583,7 @@ public:
         return *this;
     }
     // scalar
-    const Array<Dim>& operator+=(double scalar)
+    const ND::Array<Dim>& operator+=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -728,7 +602,7 @@ public:
     }
 
     // -= operator
-    const Array<Dim>& operator-=(const Array<Dim>& other)
+    const ND::Array<Dim>& operator-=(const ND::Array<Dim>& other)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -746,7 +620,7 @@ public:
         return *this;
     }
     // scalar
-    const Array<Dim>& operator-=(double scalar)
+    const ND::Array<Dim>& operator-=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -765,7 +639,7 @@ public:
     }
 
     // *= operator
-    const Array<Dim>& operator*=(const Array<Dim>& other)
+    const ND::Array<Dim>& operator*=(const ND::Array<Dim>& other)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -783,7 +657,7 @@ public:
         return *this;
     }
     // scalar
-    const Array<Dim>& operator*=(double scalar)
+    const ND::Array<Dim>& operator*=(double scalar)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -802,7 +676,7 @@ public:
     }
 
     // /= operator
-    const Array<Dim>& operator/=(const Array<Dim>& other)
+    const ND::Array<Dim>& operator/=(const ND::Array<Dim>& other)
     {
         if constexpr(length>PAR_SIZE)
         {
@@ -820,7 +694,7 @@ public:
         return *this;
     }
     // scalar
-    const Array<Dim>& operator/=(double scalar)
+    const ND::Array<Dim>& operator/=(double scalar)
     {
         double inv_scal = 1.0/scalar;
 
@@ -840,7 +714,13 @@ public:
         return *this;
     }
 };
+template<size_t Dim>
+struct base_traits<ND::Array<Dim>>
+{
+    typedef ND::Array<Dim> terminal_type;
+    typedef double terminal_sub_type;
+};
 
-
+}
 
 #endif

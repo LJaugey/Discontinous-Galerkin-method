@@ -5,9 +5,9 @@
 
 #include "parameters.hpp"
 
-grid_vec_qq Gauss_Lobatto_2D(Array<Nx+1> x, Array<Ny+1> y, Array<System_dim> (*f)(double,std::string, double,std::string));
+grid_vec_qq Gauss_Lobatto_2D(ND::Array<Nx+1> x, ND::Array<Ny+1> y, ND::Array<System_dim> (*f)(double,std::string, double,std::string));
 
-Array<order> lgl_nodes();
-Array<order> lgl_weights(Array<order> x);
+ND::Array<order> lgl_nodes();
+ND::Array<order> lgl_weights(ND::Array<order> x);
 
 #endif

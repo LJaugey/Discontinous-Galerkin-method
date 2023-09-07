@@ -7,9 +7,9 @@
 
 using namespace std;
 
-Array<order> x_ref = lgl_nodes();
-Array<order> w_ref = lgl_weights(x_ref);
-Array<order,order> D = init_D(x_ref);
+ND::Array<order> x_ref = lgl_nodes();
+ND::Array<order> w_ref = lgl_weights(x_ref);
+ND::Array<order,order> D = init_D(x_ref);
 
 double t;
 double dt_old = t_fin;

@@ -5,17 +5,17 @@
 
 using namespace std;
 
-Array<System_dim> u0_custom(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> u0_custom(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     return result;
 }
 
 
-Array<System_dim> u0_sin(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> u0_sin(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     result(0) = sin(2*M_PI*x);
 
@@ -23,9 +23,9 @@ Array<System_dim> u0_sin(double x, string limit1, double y, string limit2)
 }
 
 
-Array<System_dim> u0_pos_sin(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> u0_pos_sin(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     result(0) = 1+sin(2*M_PI*x);
 
@@ -33,9 +33,9 @@ Array<System_dim> u0_pos_sin(double x, string limit1, double y, string limit2)
 }
 
 
-Array<System_dim> u0_Euler_smooth(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> u0_Euler_smooth(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
     
     // X direction
     //result(0) = 1+0.2*sin(2*M_PI*x);
@@ -75,9 +75,9 @@ Array<System_dim> u0_Euler_smooth(double x, string limit1, double y, string limi
 }
 
 
-Array<System_dim> u0_Sod(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> u0_Sod(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
     
     if(x<0.5)
     {
@@ -123,9 +123,9 @@ Array<System_dim> u0_Sod(double x, string limit1, double y, string limit2)
 
 
 
-Array<System_dim> Riemann_2D_1(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> Riemann_2D_1(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     double v1 = 0.0;
     double v2 = 0.0;
@@ -174,9 +174,9 @@ Array<System_dim> Riemann_2D_1(double x, string limit1, double y, string limit2)
 
 
 
-Array<System_dim> Riemann_2D_2(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> Riemann_2D_2(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     //cout<<x<<","<<y<<endl;
     double v1 = 0.0;
@@ -223,9 +223,9 @@ Array<System_dim> Riemann_2D_2(double x, string limit1, double y, string limit2)
     return result;
 }
 
-Array<System_dim> Riemann_2D_3(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> Riemann_2D_3(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     double v1 = 0.0;
     double v2 = 0.0;
@@ -271,9 +271,9 @@ Array<System_dim> Riemann_2D_3(double x, string limit1, double y, string limit2)
     return result;
 }
 
-Array<System_dim> Riemann_2D_4(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> Riemann_2D_4(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
 
     double v1 = 0.0;
     double v2 = 0.0;
@@ -321,9 +321,9 @@ Array<System_dim> Riemann_2D_4(double x, string limit1, double y, string limit2)
 
 
 
-Array<System_dim> Heat(double x, string limit1, double y, string limit2)
+ND::Array<System_dim> Heat(double x, string limit1, double y, string limit2)
 {
-    Array<System_dim> result;
+    ND::Array<System_dim> result;
     
     result(0) = cos(2*M_PI*x);
     
@@ -331,7 +331,7 @@ Array<System_dim> Heat(double x, string limit1, double y, string limit2)
 }
 
 
-Array<System_dim> (*init_u0())(double, string, double, string)
+ND::Array<System_dim> (*init_u0())(double, string, double, string)
 {
     if(u0_Name == "Custom")
     {

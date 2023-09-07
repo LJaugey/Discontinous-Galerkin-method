@@ -5,7 +5,7 @@
 
 #include "parameters.hpp"
 
-Array<order,order> init_D(Array<order> x_ref);
+ND::Array<order,order> init_D(ND::Array<order> x_ref);
 
 //void init_Equation();
 
