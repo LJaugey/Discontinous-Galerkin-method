@@ -12,8 +12,8 @@ void dilation_based_viscosity_Euler(grid_vec_qq const& u, grid_point_qq & nu)
     #pragma omp parallel
     {
 
-        ND::Array<order,order> speed1;
-        ND::Array<order,order> speed2;
+        ND::Array<double, order,order> speed1;
+        ND::Array<double, order,order> speed2;
 
         double ds = 0.0;
 
@@ -94,9 +94,9 @@ void dilation_based_viscosity_Euler(grid_vec_qq const& u, grid_point_qq & nu)
 
 void entropy_based_viscosity_Euler(grid_vec_qq const& u, grid_point_qq & nu)
 {
-    ND::Array<Ny,Nx> nu_av;
+    ND::Array<double, Ny,Nx> nu_av;
 
-    ND::Array<Ny,Nx,order> nu_av_y;
+    ND::Array<double, Ny,Nx,order> nu_av_y;
     
     
 //    #pragma omp parallel
@@ -207,12 +207,12 @@ void entropy_based_viscosity_Euler(grid_vec_qq const& u, grid_point_qq & nu)
     
     #pragma omp parallel
     {
-        ND::Array<order,order> E;
-        ND::Array<order,order> E_old;
-        ND::Array<order,order> F_1;
-        ND::Array<order,order> F_2;
-        ND::Array<order,order> F_old_1;
-        ND::Array<order,order> F_old_2;
+        ND::Array<double, order,order> E;
+        ND::Array<double, order,order> E_old;
+        ND::Array<double, order,order> F_1;
+        ND::Array<double, order,order> F_2;
+        ND::Array<double, order,order> F_old_1;
+        ND::Array<double, order,order> F_old_2;
 
         double p, p_old;
         

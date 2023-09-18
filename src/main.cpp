@@ -148,7 +148,7 @@ double compute_dt(grid_vec_qq const& u, grid_point_qq const& nu)
     }
     else
     {
-        ND::Array<Ny,Nx, System_dim> u_bar = quadrature_average_2D(u);
+        ND::Array<double, Ny,Nx, System_dim> u_bar = quadrature_average_2D(u);
 
         double max_val = u_bar(0,0,0);
 
@@ -247,8 +247,8 @@ int main(int argc, char **argv)
 
     //init_Equation();
 
-    ND::Array<Nx+1> x_;
-    ND::Array<Ny+1> y_;
+    ND::Array<double, Nx+1> x_;
+    ND::Array<double, Ny+1> y_;
 
     for(int j = 0; j<Nx+1; j++)   x_(j) = ax + j*dx;
     for(int i = 0; i<Ny+1; i++)   y_(i) = ay + i*dy;

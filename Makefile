@@ -1,5 +1,5 @@
 CXX:=g++
-CXXFLAGS:= -Ofast -Wall -std=c++20 -fopenmp
+CXXFLAGS:= -std=c++20
 
 SRC = src
 OBJ = obj
@@ -10,15 +10,23 @@ SOURCES := $(wildcard $(SRC)/*.$(EXT))
 OBJECTS := $(patsubst $(SRC)/%.$(EXT),$(OBJ)/%.o,$(SOURCES))
 DEPENDS := $(patsubst $(SRC)/%.$(EXT),$(DEP)/%.d,$(SOURCES))
 
+
+all: CXXFLAGS+= -O1 -Wall -fopenmp
 all: run
 
-clena: clean
+single: CXXFLAGS+= -Ofast -Wall -march=native
+single: run
 
-debug: CXXFLAGS += -g
+release: CXXFLAGS+= -Ofast -fopenmp -march=native
+release: run
+
+profile: CXXFLAGS+= -O1 -pg
+profile: run
+
+debug: CXXFLAGS+= -Og -g
 debug: run
 
-profile: CXXFLAGS += -pg
-profile: run
+clena: clean
 
 run: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
@@ -29,4 +37,5 @@ $(OBJ)/%.o: $(SRC)/%.$(EXT) Makefile
 	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(DEP)/$*.d -c $< -o $@
 
 clean:
-	clear && rm $(OBJ)/*.o $(DEP)/*.d output/*.out run
+	-rm $(OBJ)/*.o $(DEP)/*.d output/*.out run
+	clear

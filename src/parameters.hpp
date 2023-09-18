@@ -5,7 +5,7 @@
 
 #include <cmath>
 #include <string>
-#include "ND_array.hpp"
+#include "ND_Array/ND_Array.hpp"
 
 using namespace std;
 
@@ -51,8 +51,8 @@ constexpr double gamma_ = 7.0/5.0;
 
 // Scheme parameters
 constexpr int order = 3;
-constexpr int Ny = 150;
-constexpr int Nx = 150;
+constexpr int Ny = 75;
+constexpr int Nx = 75;
 constexpr double dx = (bx-ax)/Nx;
 constexpr double dy = (by-ay)/Ny;
 extern double dt_old;
@@ -66,23 +66,23 @@ constexpr std::string Artificial_Viscosity_Name = "Dialation";    constexpr doub
 
 
 
-typedef ND::Array<Ny+2,Nx+2, order,order, System_dim> grid_vec_qq;
-typedef ND::Array<Ny+2,Nx+2, order, System_dim> grid_vec_q;
-typedef ND::Array<Ny+2,Nx+2, System_dim> grid_vec_;
+typedef ND::Array<double, Ny+2,Nx+2, order,order, System_dim> grid_vec_qq;
+typedef ND::Array<double, Ny+2,Nx+2, order, System_dim> grid_vec_q;
+typedef ND::Array<double, Ny+2,Nx+2, System_dim> grid_vec_;
 
-typedef ND::Array<order,order, System_dim> vec_qq;
-typedef ND::Array<order, System_dim> vec_q;
-typedef ND::Array<System_dim> vec_;
+typedef ND::Array<double, order,order, System_dim> vec_qq;
+typedef ND::Array<double, order, System_dim> vec_q;
+typedef ND::Array<double, System_dim> vec_;
 
-typedef ND::Array<Ny+2,Nx+2, order,order> grid_point_qq;
-typedef ND::Array<Ny+2,Nx+2, order> grid_point_q;
-typedef ND::Array<Ny+2,Nx+2> grid_point_;
+typedef ND::Array<double, Ny+2,Nx+2, order,order> grid_point_qq;
+typedef ND::Array<double, Ny+2,Nx+2, order> grid_point_q;
+typedef ND::Array<double, Ny+2,Nx+2> grid_point_;
 
-typedef ND::Array<order,order> point_qq;
-typedef ND::Array<order> point_q;
-//typedef ND::Array<> point_;
+typedef ND::Array<double, order,order> point_qq;
+typedef ND::Array<double, order> point_q;
+//typedef ND::Array<double, > point_;
 
-typedef ND::Array<System_dim,System_dim> point_Jac;
+typedef ND::Array<double, System_dim,System_dim> point_Jac;
 
 
 
@@ -103,9 +103,9 @@ extern double t;
 
 
 
-extern ND::Array<order> x_ref;
-extern ND::Array<order> w_ref;
-extern ND::Array<order,order> D;
+extern ND::Array<double, order> x_ref;
+extern ND::Array<double, order> w_ref;
+extern ND::Array<double, order,order> D;
 
 
 extern vec_ (*f1)(vec_ const&);

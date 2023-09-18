@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include <iostream>
-#include "ND_array.hpp"
+#include "ND_Array/ND_Array.hpp"
 #include "parameters.hpp"
 
 

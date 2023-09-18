@@ -13,17 +13,17 @@
 
 using namespace std;
 
-grid_vec_qq Gauss_Lobatto_2D(ND::Array<Nx+1> x, ND::Array<Ny+1> y, ND::Array<System_dim> (*f)(double,std::string, double,std::string))
+grid_vec_qq Gauss_Lobatto_2D(ND::Array<double, Nx+1> x, ND::Array<double, Ny+1> y, ND::Array<double, System_dim> (*f)(double,std::string, double,std::string))
 {
     std::string boundary_1 = "None";
     std::string boundary_2 = "None";
 
-    ND::Array<order> x_;
-    ND::Array<order> y_;
+    ND::Array<double, order> x_;
+    ND::Array<double, order> y_;
     
     grid_vec_qq u;
 
-    ND::Array<System_dim> f_temp;
+    ND::Array<double, System_dim> f_temp;
 
 
     for(int i = 0; i<Ny; i++)
@@ -82,10 +82,10 @@ grid_vec_qq Gauss_Lobatto_2D(ND::Array<Nx+1> x, ND::Array<Ny+1> y, ND::Array<Sys
 
 // The next two functions are inspired by the matlab function found here:
 // https://www.mathworks.com/matlabcentral/fileexchange/4775-legende-gauss-lobatto-nodes-and-weights
-ND::Array<order> lgl_nodes()
+ND::Array<double, order> lgl_nodes()
 {
     // Use the Chebyshev-Gauss-Lobatto nodes as the first guess
-    ND::Array<order> x;
+    ND::Array<double, order> x;
 
     for(int i = 0; i<order;i++)
     {
@@ -94,13 +94,13 @@ ND::Array<order> lgl_nodes()
 
     // The Legendre Vandermonde Matrix
     
-    ND::Array<order,order> P;
+    ND::Array<double, order,order> P;
 
     // Compute P_((order-1)) using the recursion relation
     // Compute its first and second derivatives and 
     // update x using the Newton-Raphson method.
 
-    ND::Array<order> xold;
+    ND::Array<double, order> xold;
     xold = 2.0;
     
     while((abs(x-xold).max())>numeric_limits<double>::epsilon())
@@ -123,9 +123,9 @@ ND::Array<order> lgl_nodes()
 
 
 
-ND::Array<order> lgl_weights(ND::Array<order> x)
+ND::Array<double, order> lgl_weights(ND::Array<double, order> x)
 {
-    ND::Array<order,order> P;
+    ND::Array<double, order,order> P;
 
     P[0].fill(1);
     P[1].fill(x);

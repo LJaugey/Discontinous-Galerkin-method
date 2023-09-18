@@ -6,9 +6,9 @@
 using namespace std;
 
 
-ND::Array<Ny,Nx, System_dim> quadrature_average_2D(grid_vec_qq const& u)
+ND::Array<double, Ny,Nx, System_dim> quadrature_average_2D(grid_vec_qq const& u)
 {
-    ND::Array<Ny,Nx, System_dim> u_bar;
+    ND::Array<double, Ny,Nx, System_dim> u_bar;
 
     #pragma omp parallel for collapse(2) if(omp_get_num_threads() == 1)
     for(size_t i=0; i<Ny; i++)
@@ -33,9 +33,9 @@ ND::Array<Ny,Nx, System_dim> quadrature_average_2D(grid_vec_qq const& u)
 }
 
 
-ND::Array<Ny,Nx> quadrature_average_2D(grid_point_qq const& nu)
+ND::Array<double, Ny,Nx> quadrature_average_2D(grid_point_qq const& nu)
 {
-    ND::Array<Ny,Nx> nu_bar;
+    ND::Array<double, Ny,Nx> nu_bar;
 
     #pragma omp parallel for collapse(2) if(omp_get_num_threads() == 1)
     for(size_t i=0; i<Ny; i++)
